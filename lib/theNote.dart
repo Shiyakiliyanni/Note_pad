@@ -1,7 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class Note extends StatefulWidget {
-  const Note({Key? key}) : super(key: key);
+  final String docuId;
+  final String collId;
+  final String docId;
+  final String colname;
+  const Note({Key? key, required this.docuId, required this.collId, required this.docId, required this.colname}) : super(key: key);
 
   @override
   State<Note> createState() => _NoteState();
@@ -14,7 +19,7 @@ class _NoteState extends State<Note> {
   List<Color> bg = [Colors.white, Colors.lightBlueAccent, Colors.lightGreenAccent, Colors.orangeAccent];
   List bg1 = [Colors.black, Colors.blue[900], Colors.green[900], Colors.deepOrange[900]];
   Color defbg = Colors.white;
-  Color? defTxtCol = Colors.black;
+  Color defTxtCol = Colors.black;
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +83,24 @@ class _NoteState extends State<Note> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: (){
+          Save();
+          Navigator.pop(context);
+        },
+        tooltip: 'Save note',
+        child: Icon(Icons.save_alt_rounded, color: Colors.white,),
+        backgroundColor: Colors.cyan[900],
+      ),
     );
   }
 
+  void Save(){
+    FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(widget.docuId).collection(widget.collId).add(
+        {'Title': title.text, 'content': nte.text,
+          'bgcolor': 0xff7091F5, 'txtcolor': 0xff7091F5
+        });
+  }
   void _showColorPicker(BuildContext context) async {
     final selectedColor = await showModalBottomSheet(
       context: context,

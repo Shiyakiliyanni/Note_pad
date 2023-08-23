@@ -1,12 +1,16 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:note_pad/Notes.dart';
 import 'package:note_pad/model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class sub_files extends StatefulWidget {
 
   final String text;
-  sub_files({required this.text});
+  final String docId;
+  final String colname;
+  sub_files({required this.text, required this.docId, required this.colname});
 
   @override
   State<sub_files> createState() => _sub_filesState();
@@ -14,15 +18,80 @@ class sub_files extends StatefulWidget {
 
 class _sub_filesState extends State<sub_files> {
 
-  List instances = [];
-
 
   TextEditingController txt = TextEditingController();
   bool given1 = false;
   List Foldname1 = [];
-  int count1 = 0;
   late String file1;
-  Future<void> _displayTextInputDialog1(BuildContext context, subFile file) async {
+  int num= 0;
+  Map docList1 = {};
+  Map dataMap1 = {};
+  bool given = false;
+  List big = [];
+  List big1 = [];
+  List big3 = [];
+  List big4 = [];
+
+  getData()async {
+    QuerySnapshot s = await FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).get();
+    num = s.docs.length;
+    for (var i = 0; i < num; i++) {
+      final title = s.docs[i].reference.id;
+      print('title : $title');
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(title).get();
+    var data = await snapshot.data() as Map;
+    //TODO
+    if(big.contains(title)){
+    null;
+    }else{
+      big.add(title);
+      big1.add(data);
+    docList1.addAll({widget.docId : big});
+    dataMap1.addAll({widget.docId : big1});
+    }
+    if(big.contains(docList1[i])){
+      null;
+    }else{
+      print('doc list: $docList1');
+      print('data map: $dataMap1');
+      print("big3 : $big3");
+      big3.clear();
+      big4.clear();
+      big3.add(docList1);
+      big4.add(dataMap1);
+    }
+
+    if(docList1.isNotEmpty){
+    setState(() {
+      given1 = true;
+    });
+    print(given1);
+    }
+
+    print('doclist: $docList1');
+    print('data: $data');
+    print('snap: $snapshot');
+    print('big: $big');
+    print('Datamap:$dataMap1');
+    print('length: ${dataMap1[widget.docId]?.length}');
+    print('big 3: $big3');
+    print('big 4: $big4');
+  }
+    given = true;
+    return given;
+  }
+
+  sendData(String title)async{
+    await FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc().set({'name': title});
+  }
+
+  @override
+  void initState() {
+    getData();
+    super.initState();
+  }
+
+  Future _displayTextInputDialog1(BuildContext context) async {
     return showDialog(
         context: context,
         builder: (context) {
@@ -37,13 +106,16 @@ class _sub_filesState extends State<sub_files> {
             actions: [
               TextButton(
                   onPressed: (){
-                    setState(() {
+                    if(txt.text.isNotEmpty){
+                      setState(() {
+                        given = false;
+                      });
+                      sendData(txt.text);
+                      getData();
                       Foldname1.add(txt.text);
-                      given1 = true;
                       Navigator.pop(context);
                       txt.clear();
-                      file.theclick(count1, txt.text);
-                    });
+                    }
                   },
                   child: Text('OK')
               ),
@@ -54,7 +126,6 @@ class _sub_filesState extends State<sub_files> {
                   child: Text('Cancel')
               ),
             ],
-
           );
         });
   }
@@ -63,6 +134,7 @@ class _sub_filesState extends State<sub_files> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.yellow[100],
       appBar: AppBar(
         backgroundColor: Colors.cyan[900],
         title: Text(widget.text, style: TextStyle(
@@ -80,56 +152,116 @@ class _sub_filesState extends State<sub_files> {
           Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height*0.8,
-            child: ListView.builder(
-                itemCount: Foldname1.length,
-                itemBuilder: (context, index) {
-                  return GestureDetector(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width*0.95,
-                      height: 50,
-                      padding: EdgeInsets.all(10),
-                      margin: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: Colors.cyan[100]
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.folder, color: Colors.white,),
-                          SizedBox(
-                            width: 5,
+            child: given1 ?
+            Container(
+              child: given ? ListView.builder(
+                  itemCount: dataMap1[widget.docId]?.length,
+                  itemBuilder: (context, index) {
+                    var keyList = dataMap1.keys.toList();
+                    var a = dataMap1[keyList[0]][index]['name'];
+print('a: $a');
+                    //print(dataMap1.values.elementAt(1)[1]['name']);
+                    return GestureDetector(
+                      onTap: (){
+                        Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                            ViewNotes(text: dataMap1[keyList[0]][index]['name'],
+                            docuId: docList1[widget.docId][index].toString(),
+                            collId: dataMap1[keyList[0]][index]['name'].toString(),
+                                docId: widget.docId, colname: widget.colname)));
+                      },
+                      child: Card(
+                        color: Colors.cyan[700],
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: ListTile(
+                            title: Text(dataMap1[keyList[0]][index]['name'], style: TextStyle(
+                                color: Colors.white
+                            ),),
+                            leading: Icon(Icons.folder, color: Colors.white,),
+                            trailing: Container(
+                              width: 50,
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 5,
+                                  ),
+                                  IconButton(
+                                      onPressed: (){
+                                        showDialog(
+                                            context: context,
+                                            builder: (context){
+                                              return  AlertDialog(
+                                                title: Text("Delete"),
+                                                content: Text('This folder will be deleted'),
+                                                actions: [
+                                                  TextButton(
+                                                      onPressed: (){
+                                                        Navigator.of(context).pop();
+                                                        onFolderDeleted(index);
+                                                      },
+                                                      child: Text('OK')
+                                                  ),
+                                                  TextButton(
+                                                      onPressed: (){
+                                                        Navigator.of(context).pop();
+                                                      },
+                                                      child: Text('Cancel')
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                        );
+                                      },
+                                      icon: Icon(Icons.delete, color: Colors.white,)
+                                  )
+                                ],
+                              ),
+                            ),
                           ),
-                          Text((given1 ?  Foldname1[index] : 'Folder name'), style:
-                          TextStyle(color: Colors.white),)
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                }
-            ),
+                    );
+                  }
+              ) : Center(child: CircularProgressIndicator(),),
+            )
+
+            : Text('Theres no folders here')
           )
+
         ],
+
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          count1++;
-          subFile a = subFile();
-          _displayTextInputDialog1(context, a);
+          _displayTextInputDialog1(context);
         },
         tooltip: 'Add folder',
         child: Icon(Icons.add, color: Colors.white,),
-        backgroundColor: Colors.cyan,
+        backgroundColor: Colors.cyan[900],
       ),
     );
   }
-}
-class subFile{
-  int count2 = 0;
-  String foN ='';
-
-  void theclick(int l, String a){
-    List c = List.generate(l, (index) => null);
-    a = foN;
-    c.add(foN);
+  void onFolderDeleted(int index) {
+    setState(() {
+      print('The doclist being removed: ${docList1[widget.docId][index]}');
+      print('the data being removed: ${dataMap1[widget.docId][index]}');
+      FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(docList1[widget.docId][index]).delete();
+      docList1[widget.docId].remove(index);
+      dataMap1[widget.docId].remove(index);
+      getData();
+      if(docList1.isEmpty){
+        given1 = false;
+      }
+    });
   }
 }
+// class subFile{
+//   int count2 = 0;
+//   String foN ='';
+
+  // void theclick(int l, String a){
+  //   List c = List.generate(l, (index) => null);
+  //   a = foN;
+  //   c.add(foN);
+  // }
+// }

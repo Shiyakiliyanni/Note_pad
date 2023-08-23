@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:note_pad/firebase_options.dart';
 import 'package:note_pad/theNote.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 import 'firstpage.dart';
+import 'future_build.dart';
 
-void main() {
+void main()async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -35,7 +43,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.cyan),
         useMaterial3: true,
       ),
-      home: Note(),
+      home: first_page(),
     );
   }
 }

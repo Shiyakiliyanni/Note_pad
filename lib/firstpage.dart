@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:note_pad/subfile.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 class first_page extends StatefulWidget {
@@ -18,6 +20,7 @@ class first_page extends StatefulWidget {
 class _first_pageState extends State<first_page> {
   final GlobalKey scaffol_key = new GlobalKey();
 
+
   TextEditingController search = TextEditingController();
   TextEditingController nameFold = TextEditingController();
   int count = 0;
@@ -28,6 +31,61 @@ class _first_pageState extends State<first_page> {
   String redWar = 'Please enter a name';
   var err;
   late String barName;
+  List docList = [];
+  int num = 0;
+  List dataMap = [];
+  bool given1 = false;
+  getData()async{
+    CollectionReference cr = FirebaseFirestore.instance.collection('Folders');
+    QuerySnapshot querySnapshot = await cr.get();
+    num = querySnapshot.docs.length;
+    for(var i = 0; i<num; i++){
+      final title = querySnapshot.docs[i].reference.id;
+      print('title : $title');
+      DocumentSnapshot snapshot =  await cr.doc(title).get();
+      var data = await snapshot.data() as Map;
+      if(docList.contains(title)){
+        null;
+      }else{
+        docList.add(title);
+        dataMap.add(data);
+      }
+      if(docList.isNotEmpty){
+        given1 = true;
+      }
+      print('doclist: $docList');
+      print('data: $data');
+      print('snap: $snapshot');
+      print('Datamap: $dataMap');
+    }
+    given = true;
+    setState(() {
+
+    });
+    return given;
+  }
+
+  bool isDocThere(){
+    if(docList.isNotEmpty){
+      return false;
+    }else{
+      return true;
+    }
+  }
+  // Future setName(String folderName)async{
+  //   return cr.add({'name': folderName});
+  // }
+
+  sendData(String title)async{
+    await FirebaseFirestore.instance.collection('Folders').doc().set({'name':title});
+  }
+
+  @override
+  void initState() {
+    getData();
+    super.initState();
+  }
+
   Future<void> _displayTextInputDialog(BuildContext context) async {
     return showDialog(
         context: context,
@@ -44,15 +102,16 @@ class _first_pageState extends State<first_page> {
             actions: [
               TextButton(
                   onPressed: (){
-                          setState(() {
-                            Foldname.add(nameFold.text);
-                            barName = nameFold.text;
-                            given = true;
-                            print(given);
-                            print(Foldname.length);
-                            Navigator.pop(context as BuildContext);
-                            nameFold.clear();
-                          });
+                    if(nameFold.text.isNotEmpty){
+                      setState(() {
+                        given = false;
+                      });
+                      sendData(nameFold.text);
+                      getData();
+                      Foldname.add(nameFold.text);
+                      Navigator.pop(context as BuildContext);
+                      nameFold.clear();
+                    }
                   },
                   child: Text('OK')
               ),
@@ -168,7 +227,7 @@ class _first_pageState extends State<first_page> {
                   Text('NOTES', style: TextStyle(
                       color: Colors.white,
                       fontSize: 30,
-                    fontWeight: FontWeight.bold
+                    fontWeight: FontWeight.bold,
                   ),),
                 ],
               ),
@@ -205,28 +264,35 @@ class _first_pageState extends State<first_page> {
                 Container(
                     width: MediaQuery.of(context).size.width*0.95,
                     height: 500,
-                    child: count<=0 ? Text('There is no notes to display') :
+                    child: given1 ? !given ? Center(
+                      child: Column(
+                        children: [
+                          Center(child: CircularProgressIndicator()),
+                        ],
+                      ),
+                    ) :
                     ListView.builder(
-                        itemCount: Foldname.length,
+                        itemCount: dataMap.length,
                         shrinkWrap: true,
-                        itemBuilder: (context, index){
+                        itemBuilder: (context, index) {
                           return GestureDetector(
-                            onTap: (){
-                              print(Foldname[index]);
+                            onTap: () {
+                              //print(Foldname[index]);
                               Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) => sub_files(text: Foldname[index]))
+                                  builder: (context) =>
+                                      sub_files(text: dataMap[index]['name'], docId: docList[index].toString(), colname: dataMap[index]['name'].toString()))
                               );
                             },
                             child: Card(
-
                               color: Colors.cyan[700],
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: ListTile(
-                                  title: Text(given ? Foldname[index] : 'Folder name', style: TextStyle(
-                                    color: Colors.white
+                                  title: Text(dataMap[index]['name'], style: TextStyle(
+                                      color: Colors.white
                                   ),),
-                                  leading: Icon(Icons.folder, color: Colors.white,),
+                                  leading: Icon(
+                                    Icons.folder, color: Colors.white,),
                                   trailing: Container(
                                     width: 50,
                                     child: Row(
@@ -235,33 +301,45 @@ class _first_pageState extends State<first_page> {
                                           width: 5,
                                         ),
                                         IconButton(
-                                            onPressed: (){
+                                            onPressed: () {
                                               showDialog(
                                                   context: context,
-                                                  builder: (context){
-                                                    return  AlertDialog(
-                                                      title: Text("Delete"),
-                                                      content: Text('This folder will be deleted'),
+                                                  builder: (context) {
+                                                    return AlertDialog(
+                                                      title: Text(
+                                                          "Delete"),
+                                                      content: Text(
+                                                          'This folder will be deleted'),
                                                       actions: [
                                                         TextButton(
-                                                            onPressed: (){
-                                                              Navigator.of(context).pop();
-                                                              onFolderDeleted(index);
+                                                            onPressed: () {
+                                                              Navigator
+                                                                  .of(
+                                                                  context)
+                                                                  .pop();
+                                                              onFolderDeleted(
+                                                                  index);
                                                             },
-                                                            child: Text('OK')
+                                                            child: Text(
+                                                                'OK')
                                                         ),
                                                         TextButton(
-                                                            onPressed: (){
-                                                              Navigator.of(context).pop();
+                                                            onPressed: () {
+                                                              Navigator
+                                                                  .of(
+                                                                  context)
+                                                                  .pop();
                                                             },
-                                                            child: Text('Cancel')
+                                                            child: Text(
+                                                                'Cancel')
                                                         ),
                                                       ],
                                                     );
                                                   }
                                               );
                                             },
-                                            icon: Icon(Icons.delete, color: Colors.white,)
+                                            icon: Icon(Icons.delete,
+                                              color: Colors.white,)
                                         )
                                       ],
                                     ),
@@ -271,7 +349,7 @@ class _first_pageState extends State<first_page> {
                             ),
                           );
                         }
-                    )
+                    ) : Center(child: Text('There is no notes'))
                 )
               ],
             ),
@@ -295,8 +373,15 @@ class _first_pageState extends State<first_page> {
 
   void onFolderDeleted(int index) {
     setState(() {
-      Foldname.removeAt(index);
-      count--;
+      print('The doclist being removed: ${docList[index]}');
+      print('the data being removed: ${dataMap[index]}');
+      FirebaseFirestore.instance.collection('Folders').doc(docList[index]).delete();
+      docList.removeAt(index);
+      dataMap.removeAt(index);
+      getData();
+      if(docList.isEmpty){
+        given1 = false;
+      }
     });
   }
 }
