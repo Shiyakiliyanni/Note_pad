@@ -98,7 +98,7 @@ class _NoteState extends State<Note> {
   void Save(){
     FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(widget.docuId).collection(widget.collId).add(
         {'Title': title.text, 'content': nte.text,
-          'bgcolor': 0xff7091F5, 'txtcolor': 0xff7091F5
+          'bgcolor': defbg.value, 'txtcolor': defTxtCol.value
         });
   }
   void _showColorPicker(BuildContext context) async {

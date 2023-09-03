@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:note_pad/theNote.dart';
+import 'package:note_pad/viewNote.dart';
 
 class ViewNotes extends StatefulWidget {
   final String text;
@@ -73,17 +74,22 @@ class _ViewNotesState extends State<ViewNotes> {
               itemCount: noteList.length,
                 itemBuilder: (context, index){
               return GestureDetector(
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => viewNote(docuId: widget.docuId,
+                      collId: widget.collId,
+                      docId: widget.docId, colname: widget.colname, documentId: docuList[index])));
+                },
                 child: Card(
                   child: Padding(
-                    padding: EdgeInsets.all(8),
+                    padding: EdgeInsets.all(0),
                     child: ListTile(
-                      tileColor: noteList[index]['bgcolor'],
+                      tileColor: Color(noteList[index]['bgcolor']),
                       title: Text(noteList[index]['Title'],
-                        style: TextStyle(color: noteList[index]['txtcolor']),
+                        style: TextStyle(color: Color(noteList[index]['txtcolor'])),
                       ),
                       leading: Icon(Icons.note_outlined),
                       subtitle: Text(noteList[index]['content'],
-                        // style: TextStyle(color: noteList[index]['txtcolor']),
+                        style: TextStyle(color: Color(noteList[index]['txtcolor'])),
                       ),
                     ),
                   ),
