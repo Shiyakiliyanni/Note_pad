@@ -85,8 +85,23 @@ class _NoteState extends State<Note> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: (){
-          Save();
-          Navigator.pop(context);
+          if(title.text.isNotEmpty && nte.text.isNotEmpty) {
+            Save();
+            Navigator.pop(context);
+          }else{
+            showDialog(context: context, builder: (context){
+              return AlertDialog(
+                title: Text('Title or body is empty'),
+                content: Text('Please provide text input before saving'),
+                actions: [
+                  TextButton(onPressed: (){
+                    Navigator.pop(context);
+                  },
+                      child: Text('Ok'))
+                ],
+              );
+            });
+          }
         },
         tooltip: 'Save note',
         child: Icon(Icons.save_alt_rounded, color: Colors.white,),

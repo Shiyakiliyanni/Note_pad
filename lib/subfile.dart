@@ -27,12 +27,13 @@ class _sub_filesState extends State<sub_files> {
   Map docList1 = {};
   Map dataMap1 = {};
   bool given = false;
-  List big = [];
-  List big1 = [];
-  List big3 = [];
-  List big4 = [];
+
 
   getData()async {
+    List big = [];
+    List big1 = [];
+    List big3 = [];
+    List big4 = [];
     QuerySnapshot s = await FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).get();
     num = s.docs.length;
     for (var i = 0; i < num; i++) {
@@ -242,17 +243,20 @@ print('a: $a');
     );
   }
   void onFolderDeleted(int index) {
+    print('The doclist being removed: ${docList1[widget.docId][index]}');
+    print('the data being removed: ${dataMap1[widget.docId][index]}');
+    String temp = docList1[widget.docId][index];
+    docList1[widget.docId].remove(index);
+    FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(temp).delete();
+    dataMap1[widget.docId].remove(index);
+    if(docList1.isEmpty){
+      given1 = false;
+    }
+    getData();
     setState(() {
-      print('The doclist being removed: ${docList1[widget.docId][index]}');
-      print('the data being removed: ${dataMap1[widget.docId][index]}');
-      FirebaseFirestore.instance.collection('Folders').doc(widget.docId).collection(widget.colname).doc(docList1[widget.docId][index]).delete();
-      docList1[widget.docId].remove(index);
-      dataMap1[widget.docId].remove(index);
-      getData();
-      if(docList1.isEmpty){
-        given1 = false;
-      }
+      given = false;
     });
+    print('After delete doclst : $docList1');
   }
 }
 // class subFile{
