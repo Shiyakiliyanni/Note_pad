@@ -9,6 +9,7 @@ import 'package:note_pad/subfile.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:note_pad/viewNote.dart';
 
 
 class first_page extends StatefulWidget {
@@ -37,7 +38,11 @@ class _first_pageState extends State<first_page> {
   List dataMap = [];
   bool given1 = false;
   bool forSearch =  false;
-  List searchingPurpose = [];
+  List titles = [];
+  List filteredTitles = [];
+  bool searchCompleted =  false;
+  bool searchDataGot = false;
+  Map forPath = {};
 
   getData()async{
     CollectionReference cr = FirebaseFirestore.instance.collection('Folders');
@@ -57,11 +62,6 @@ class _first_pageState extends State<first_page> {
       if(docList.isNotEmpty){
         given1 = true;
       }
-      if(searchingPurpose.contains(data)){
-        null;
-      }else{
-        searchingPurpose.add(data);
-      }
       print('doclist: $docList');
       print('data: $data');
       print('snap: $snapshot');
@@ -74,13 +74,73 @@ class _first_pageState extends State<first_page> {
     return given;
   }
 
-  bool isDocThere(){
-    if(docList.isNotEmpty){
-      return false;
-    }else{
-      return true;
+  searchData()async{
+    List docList1 = [];
+    List docList2 = [];
+    List docList3 = [];
+    try {
+      print('aaa');
+      CollectionReference cr = FirebaseFirestore.instance.collection('Folders');
+      QuerySnapshot qs = await cr.get();
+      var len = qs.docs.length;
+      for (var i = 0; i < len; i++) {
+        String doc1 = qs.docs[i].reference.id;
+        docList1.add(doc1);
+        DocumentSnapshot documentSnapshot = await cr.doc(doc1).get();
+        var dataa = documentSnapshot.data() as Map;
+        CollectionReference cr1 = await cr.doc(doc1).collection(dataa['name']);
+        QuerySnapshot qs1 = await cr1.get();
+        var len1 = qs1.docs.length;
+        for (var j = 0; j < len1; j++) {
+          String doc2 = qs1.docs[j].reference.id;
+          docList2.add(doc2);
+          DocumentSnapshot ds = await cr1.doc(doc2).get();
+          var data = await ds.data() as Map;
+          CollectionReference cr2 = await cr1.doc(doc2).collection(data['name']);
+          QuerySnapshot qs2 = await cr2.get();
+          var len2 = qs2.docs.length;
+          for (var k = 0; k < len2; k++) {
+            String doc3 = qs2.docs[k].reference.id;
+            docList3.add(doc3);
+            DocumentSnapshot ds1 = await cr2.doc(doc3).get();
+            var daata = await ds1.data() as Map;
+            titles.add(daata['Title']);
+            forPath.addAll({
+              daata['Title']: [{'doc1':doc1},
+                {'colname': dataa['name']}, {'doc2': doc2},
+                {'colname2': data['name']}, {'doc3': doc3}]
+            });
+          }
+        }
+      }
+      print('list of titles : $titles');
+    }catch(e){
+      print('Query error = $e');
     }
+    searchDataGot = true;
+    return searchDataGot;
   }
+
+  void performSearch(String givenText){
+    setState(() {
+      if(searchDataGot == true){
+        filteredTitles = titles.where((element) =>
+            element.toString().toLowerCase().contains(givenText.toLowerCase())).toList();
+        searchCompleted = true;
+        print(searchCompleted);
+      }else{
+        searchCompleted = false;
+      }
+      });
+  }
+
+  // bool isDocThere(){
+  //   if(docList.isNotEmpty){
+  //     return false;
+  //   }else{
+  //     return true;
+  //   }
+  // }
   // Future setName(String folderName)async{
   //   return cr.add({'name': folderName});
   // }
@@ -92,6 +152,7 @@ class _first_pageState extends State<first_page> {
   @override
   void initState() {
     getData();
+    searchData();
     super.initState();
   }
 
@@ -261,15 +322,14 @@ class _first_pageState extends State<first_page> {
                       borderRadius: BorderRadius.circular(20)
                   ),
                   child: GestureDetector(
-                    onTap: (){
-                      // TODO: search function here probably
-                    },
                     child: TextField(
                       controller: search,
                       onChanged: (text){
                         setState(() {
                           if(search.text.isNotEmpty){
                             forSearch = true;
+                            print('search initiated');
+                            performSearch(search.text);
                           }else{
                             forSearch = false;
                           }
@@ -284,99 +344,117 @@ class _first_pageState extends State<first_page> {
                     ),
                   ),
                 ),
-                Container(
-                    width: MediaQuery.of(context).size.width*0.95,
-                    height: 500,
-                    child: forSearch ? Container(
-                      width: MediaQuery.of(context).size.width ,
-                      height: 100,
-                      color: Colors.green,
-                    ) : given1 ? !given ? Center(
-                      child: Column(
-                        children: [
-                          Center(child: CircularProgressIndicator()),
-                        ],
-                      ),
-                    ) :
-                    ListView.builder(
-                        itemCount: dataMap.length,
-                        shrinkWrap: true,
-                        itemBuilder: (context, index) {
-                          return GestureDetector(
-                            onTap: () {
-                              //print(Foldname[index]);
-                              Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) =>
-                                      sub_files(text: dataMap[index]['name'], docId: docList[index].toString(), colname: dataMap[index]['name'].toString()))
-                              );
-                            },
-                            child: Card(
-                              color: Colors.cyan[700],
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Container(
+                      width: MediaQuery.of(context).size.width*0.95,
+                      height: 500,
+                      child: forSearch ? searchCompleted ? Container(
+                        width: MediaQuery.of(context).size.width ,
+                        height: MediaQuery.of(context).size.height,
+                        child: ListView.builder(
+                          itemCount: filteredTitles.length,
+                            itemBuilder: (context, index){
+                              return GestureDetector(
+                                onTap: (){
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                                  viewNote(documentId: forPath[filteredTitles[index]]![4]['doc3'], docuId: forPath[filteredTitles[index]]![2]['doc2'], collId: forPath[filteredTitles[index]]![3]['colname2'], docId: forPath[filteredTitles[index]]![0]['doc1'], colname: forPath[filteredTitles[index]]![1]['colname'])
+                                  ));
+                                },
                                 child: ListTile(
-                                  title: Text(dataMap[index]['name'], style: TextStyle(
-                                      color: Colors.white
-                                  ),),
-                                  leading: Icon(
-                                    Icons.folder, color: Colors.white,),
-                                  trailing: Container(
-                                    width: 50,
-                                    child: Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 5,
-                                        ),
-                                        IconButton(
-                                            onPressed: () {
-                                              showDialog(
-                                                  context: context,
-                                                  builder: (context) {
-                                                    return AlertDialog(
-                                                      title: Text(
-                                                          "Delete"),
-                                                      content: Text(
-                                                          'This folder will be deleted'),
-                                                      actions: [
-                                                        TextButton(
-                                                            onPressed: () {
-                                                              Navigator
-                                                                  .of(
-                                                                  context)
-                                                                  .pop();
-                                                              onFolderDeleted(
-                                                                  index);
-                                                            },
-                                                            child: Text(
-                                                                'OK')
-                                                        ),
-                                                        TextButton(
-                                                            onPressed: () {
-                                                              Navigator
-                                                                  .of(
-                                                                  context)
-                                                                  .pop();
-                                                            },
-                                                            child: Text(
-                                                                'Cancel')
-                                                        ),
-                                                      ],
-                                                    );
-                                                  }
-                                              );
-                                            },
-                                            icon: Icon(Icons.delete,
-                                              color: Colors.white,)
-                                        )
-                                      ],
+                                  title: Text(filteredTitles[index]),
+                                  tileColor: Colors.yellow[100],
+                                ),
+                              );
+                            }
+                        ),
+                      ) : Center(child: Text('Please wait a moment'),): given1 ? !given ? Center(
+                        child: Column(
+                          children: [
+                            Center(child: CircularProgressIndicator()),
+                          ],
+                        ),
+                      ) :
+                      ListView.builder(
+                          itemCount: dataMap.length,
+                          shrinkWrap: true,
+                          itemBuilder: (context, index) {
+                            return GestureDetector(
+                              onTap: () {
+                                //print(Foldname[index]);
+                                Navigator.push(context, MaterialPageRoute(
+                                    builder: (context) =>
+                                        sub_files(text: dataMap[index]['name'], docId: docList[index].toString(), colname: dataMap[index]['name'].toString()))
+                                );
+                              },
+                              child: Card(
+                                color: Colors.cyan[700],
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: ListTile(
+                                    title: Text(dataMap[index]['name'], style: TextStyle(
+                                        color: Colors.white
+                                    ),),
+                                    leading: Icon(
+                                      Icons.folder, color: Colors.white,),
+                                    trailing: Container(
+                                      width: 50,
+                                      child: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 5,
+                                          ),
+                                          IconButton(
+                                              onPressed: () {
+                                                showDialog(
+                                                    context: context,
+                                                    builder: (context) {
+                                                      return AlertDialog(
+                                                        title: Text(
+                                                            "Delete"),
+                                                        content: Text(
+                                                            'This folder will be deleted'),
+                                                        actions: [
+                                                          TextButton(
+                                                              onPressed: () {
+                                                                Navigator
+                                                                    .of(
+                                                                    context)
+                                                                    .pop();
+                                                                onFolderDeleted(
+                                                                    index);
+                                                              },
+                                                              child: Text(
+                                                                  'OK')
+                                                          ),
+                                                          TextButton(
+                                                              onPressed: () {
+                                                                Navigator
+                                                                    .of(
+                                                                    context)
+                                                                    .pop();
+                                                              },
+                                                              child: Text(
+                                                                  'Cancel')
+                                                          ),
+                                                        ],
+                                                      );
+                                                    }
+                                                );
+                                              },
+                                              icon: Icon(Icons.delete,
+                                                color: Colors.white,)
+                                          )
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        }
-                    ) : Center(child: Text('There is no notes'))
+                            );
+                          }
+                      ) : Center(child: Text('There is no notes'))
+                  ),
                 )
               ],
             ),
